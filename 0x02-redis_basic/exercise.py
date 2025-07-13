@@ -38,16 +38,14 @@ def replay(method: Callable) -> None:
     """
     Display the history of calls of a particular function.
     Shows the number of calls, inputs, and outputs using Redis lists.
+    Output format strictly matches the requirements.
     """
     self = method.__self__
     qualname = method.__qualname__
     inputs_key = f"{qualname}:inputs"
     outputs_key = f"{qualname}:outputs"
     calls = self._redis.get(qualname)
-    try:
-        calls_count = int(calls) if calls else 0
-    except Exception:
-        calls_count = 0
+    calls_count = int(calls) if calls else 0
     print(f"{qualname} was called {calls_count} times:")
     inputs = self._redis.lrange(inputs_key, 0, -1)
     outputs = self._redis.lrange(outputs_key, 0, -1)
