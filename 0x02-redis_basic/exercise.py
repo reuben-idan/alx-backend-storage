@@ -4,7 +4,7 @@ This module provides a Cache class for storing and retrieving data using Redis.
 """
 import redis
 import uuid
-from typing import Union, Callable
+from typing import Union, Callable, Optional
 import functools
 
 def count_calls(method: Callable) -> Callable:
@@ -34,6 +34,26 @@ def call_history(method: Callable) -> Callable:
         return result
     return wrapper
 
+def replay(method: Callable) -> None:
+    """
+    Display the history of calls of a particular function.
+    Shows the number of calls, inputs, and outputs using Redis lists.
+    """
+    self = method.__self__
+    qualname = method.__qualname__
+    inputs_key = f"{qualname}:inputs"
+    outputs_key = f"{qualname}:outputs"
+    calls = self._redis.get(qualname)
+    try:
+        calls_count = int(calls) if calls else 0
+    except Exception:
+        calls_count = 0
+    print(f"{qualname} was called {calls_count} times:")
+    inputs = self._redis.lrange(inputs_key, 0, -1)
+    outputs = self._redis.lrange(outputs_key, 0, -1)
+    for input_args, output in zip(inputs, outputs):
+        print(f"{qualname}(*{input_args.decode('utf-8')}) -> {output.decode('utf-8')}")
+
 class Cache:
     """
     Cache class for storing and retrieving data in Redis.
@@ -61,7 +81,7 @@ class Cache:
         self._redis.set(key, data)
         return key
 
-    def get(self, key: str, fn: 'Callable[[bytes], Union[str, bytes, int, float]]' = None) -> Union[str, bytes, int, float, None]:
+    def get(self, key: str, fn: Optional[Callable[[bytes], Union[str, bytes, int, float]]] = None) -> Optional[Union[str, bytes, int, float]]:
         """
         Retrieve data from Redis by key and optionally apply a conversion function.
 
@@ -79,7 +99,7 @@ class Cache:
             return fn(data)
         return data
 
-    def get_str(self, key: str) -> str:
+    def get_str(self, key: str) -> Optional[str]:
         """
         Retrieve a UTF-8 string from Redis by key.
 
@@ -90,9 +110,11 @@ class Cache:
             The retrieved string, or None if the key does not exist.
         """
         data = self.get(key, fn=lambda d: d.decode('utf-8'))
-        return data
+        if isinstance(data, str):
+            return data
+        return None
 
-    def get_int(self, key: str) -> int:
+    def get_int(self, key: str) -> Optional[int]:
         """
         Retrieve an integer from Redis by key.
 
@@ -103,4 +125,6 @@ class Cache:
             The retrieved integer, or None if the key does not exist.
         """
         data = self.get(key, fn=int)
-        return data 
+        if isinstance(data, int):
+            return data
+        return None 
