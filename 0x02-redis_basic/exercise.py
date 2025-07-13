@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """
-"""
 This module provides a Cache class for storing and retrieving data using Redis.
 """
 import redis
 import uuid
-from typing import Union, Callable
+from typing import Union, Callable, Optional
 import functools
 
 def count_calls(method: Callable) -> Callable:
@@ -39,7 +38,6 @@ def replay(method: Callable) -> None:
     """
     Display the history of calls of a particular function.
     Shows the number of calls, inputs, and outputs using Redis lists.
-    Output format strictly matches the requirements.
     """
     self = method.__self__
     qualname = method.__qualname__
